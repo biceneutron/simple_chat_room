@@ -21,11 +21,13 @@ public class MainApp extends Application {
 
 	private Stage primaryStage;
     private BorderPane rootLayout;
+
     
     /**
      * The data as an observable list of Persons.
      */
     private ObservableList<Person> personData = FXCollections.observableArrayList();
+    
     
     /**
      * Constructor
@@ -57,7 +59,6 @@ public class MainApp extends Application {
         this.primaryStage.setTitle("AddressApp");
 
         initRootLayout();
-
         showPersonOverview();
 	}
 
@@ -81,6 +82,7 @@ public class MainApp extends Application {
         }
     }
     
+    
     /**
      * Shows the person overview inside the root layout.
      */
@@ -89,7 +91,7 @@ public class MainApp extends Application {
             // Load person overview.
             FXMLLoader loader = new FXMLLoader();
             //loader.setLocation(MainApp.class.getResource("view/PersonDemo.fxml"));
-            loader.setLocation(MainApp.class.getResource("view/PersonOverview.fxml"));
+            loader.setLocation(MainApp.class.getResource("view/PersonOverview2.fxml"));
             AnchorPane personOverview = (AnchorPane) loader.load();
 
             // Set person overview into the center of root layout.
@@ -103,6 +105,10 @@ public class MainApp extends Application {
             e.printStackTrace();
         }
     }
+    
+    
+    
+    	
     
     /**
      * Opens a dialog to edit details for the specified person. If the user
@@ -141,6 +147,7 @@ public class MainApp extends Application {
             return false;
         }
     }
+   
     
     /**
      * Returns the main stage.

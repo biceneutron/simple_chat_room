@@ -1,11 +1,24 @@
 package ch.makery.address.view;
 
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.Socket;
+
 import ch.makery.address.MainApp;
 import ch.makery.address.model.Person;
 import ch.makery.address.util.DateUtil;
@@ -31,6 +44,15 @@ public class PersonOverviewController {
     @FXML
     private Label birthdayLabel;
 
+    private Socket socket;
+    private PrintWriter writer;
+	private BufferedReader reader;
+    @FXML
+    private TextArea incomingTextArea;
+    @FXML
+    private TextField outgoingTextArea;
+    @FXML
+    private Button sendButton;
     // Reference to the main application.
     private MainApp mainApp;	
 
@@ -47,16 +69,29 @@ public class PersonOverviewController {
      */
     @FXML
     private void initialize() {
+    		// set up networking
+    		setUpNetworking();
+    		
         // Initialize the person table with the two columns.
         firstNameColumn.setCellValueFactory(cellData -> cellData.getValue().firstNameProperty());
         lastNameColumn.setCellValueFactory(cellData -> cellData.getValue().lastNameProperty());
         
-     // Clear person details.
+        // Clear person details.
         showPersonDetails(null);
         
-     // Listen for selection changes and show the person details when changed.
+        // Listen for selection changes and show the person details when changed.
         personTable.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> showPersonDetails(newValue));
+        
+        // Bind ENTER on outgoingTextArea
+        outgoingTextArea.setOnKeyPressed(new EventHandler<KeyEvent>() {
+            @Override
+            public void handle(KeyEvent keyEvent) {
+                if (keyEvent.getCode() == KeyCode.ENTER)  {
+                		handleSend();
+                }
+            }
+        });
     }
 
     /**
@@ -71,6 +106,28 @@ public class PersonOverviewController {
         personTable.setItems(mainApp.getPersonData());
     }
     
+    
+    public void setUpNetworking() {
+		try {
+			String serverIP = "192.168.101.246";
+			socket = new Socket(InetAddress.getByName(serverIP), 5000);
+			System.out.println(socket.toString());
+			writer = new PrintWriter(socket.getOutputStream());
+			InputStreamReader isReader = new InputStreamReader(socket.getInputStream());
+			reader = new BufferedReader(isReader);
+			System.out.println("Networking established.");
+			incomingTextArea.appendText("Networking established.\n");
+			incomingTextArea.appendText("**********************************\n");
+			
+			Thread thread = new Thread(new ReadBroadCast());
+			thread.start();
+		}
+		catch(Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+    
+       
     /**
      * Fills all text fields to show details about the person.
      * If the specified person is null, all text fields are cleared.
@@ -100,6 +157,20 @@ public class PersonOverviewController {
         }
     }
 
+    
+    @FXML
+    private void handleSend() {
+    		try {
+    			writer.println(outgoingTextArea.getText());
+    			writer.flush();
+    		}
+		catch(Exception ex) {
+			ex.printStackTrace();
+		}
+		outgoingTextArea.setText("");
+		outgoingTextArea.requestFocus();
+	}
+    
     
     /**
      * Called when the user clicks on the delete button.
@@ -159,4 +230,19 @@ public class PersonOverviewController {
         }
     }
 
+    
+    public class ReadBroadCast extends Thread {
+		public void run() {
+			try {
+				String msg;
+				while((msg = reader.readLine()) != null) {
+					System.out.println("Read: " + msg);
+					incomingTextArea.appendText(msg + "\n");
+				}
+			}
+			catch(Exception ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
 }
