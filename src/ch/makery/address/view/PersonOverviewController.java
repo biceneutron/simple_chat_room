@@ -2,6 +2,7 @@ package ch.makery.address.view;
 
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -20,6 +21,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 import ch.makery.address.MainApp;
+//import ch.makery.address.controller;
 import ch.makery.address.model.Person;
 import ch.makery.address.util.DateUtil;
 
@@ -48,7 +50,7 @@ public class PersonOverviewController {
     private PrintWriter writer;
 	private BufferedReader reader;
     @FXML
-    private TextArea incomingTextArea;
+    public TextArea incomingTextArea;
     @FXML
     private TextField outgoingTextArea;
     @FXML
@@ -70,7 +72,7 @@ public class PersonOverviewController {
     @FXML
     private void initialize() {
     		// set up networking
-    		setUpNetworking();
+    		//setUpNetworking();
     		
         // Initialize the person table with the two columns.
         firstNameColumn.setCellValueFactory(cellData -> cellData.getValue().firstNameProperty());
@@ -107,9 +109,15 @@ public class PersonOverviewController {
     }
     
     
+    public void setStream(PrintWriter w, BufferedReader r) {
+    		this.writer = w;
+    		this.reader = r;
+    }
+    
+    /*
     public void setUpNetworking() {
 		try {
-			String serverIP = "192.168.101.246";
+			String serverIP = "192.168.0.8";
 			socket = new Socket(InetAddress.getByName(serverIP), 5000);
 			System.out.println(socket.toString());
 			writer = new PrintWriter(socket.getOutputStream());
@@ -125,7 +133,7 @@ public class PersonOverviewController {
 		catch(Exception ex) {
 			ex.printStackTrace();
 		}
-	}
+	}*/
     
        
     /**
@@ -206,6 +214,7 @@ public class PersonOverviewController {
         }
     }
 
+    
     /**
      * Called when the user clicks the edit button. Opens a dialog to edit
      * details for the selected person.
@@ -230,6 +239,12 @@ public class PersonOverviewController {
         }
     }
 
+    
+    public void createListenThread() {
+    		Thread thread = new Thread(new ReadBroadCast());
+		thread.start();
+    }
+    
     
     public class ReadBroadCast extends Thread {
 		public void run() {

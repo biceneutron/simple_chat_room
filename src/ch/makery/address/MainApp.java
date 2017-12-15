@@ -1,19 +1,30 @@
 package ch.makery.address;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.Socket;
 
 import ch.makery.address.model.Person;
 import ch.makery.address.view.PersonEditDialogController;
 import ch.makery.address.view.PersonOverviewController;
+import ch.makery.address.view.PersonOverviewController.ReadBroadCast;
+import ch.makery.address.view.RootLayoutController;
+import ch.makery.address.view.ServerIPPortController;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 
 
@@ -21,7 +32,18 @@ public class MainApp extends Application {
 
 	private Stage primaryStage;
     private BorderPane rootLayout;
+    
+    // Controller
+    private PersonOverviewController personOverviewController;
+    private PersonEditDialogController personEditDialogController;
+    private RootLayoutController rootLayoutController;
+    private ServerIPPortController serverIPPortController;
+    
 
+    // Networking
+    private Socket socket;
+    private PrintWriter writer;
+	private BufferedReader reader;
     
     /**
      * The data as an observable list of Persons.
@@ -57,6 +79,13 @@ public class MainApp extends Application {
 	public void start(Stage primaryStage) {
 		this.primaryStage = primaryStage;
         this.primaryStage.setTitle("AddressApp");
+        this.primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+            @Override
+            public void handle(WindowEvent t) {
+                Platform.exit();
+                System.exit(0);
+            }
+        });
 
         initRootLayout();
         showPersonOverview();
@@ -73,6 +102,10 @@ public class MainApp extends Application {
             loader.setLocation(MainApp.class.getResource("view/RootLayout.fxml"));
             rootLayout = (BorderPane) loader.load();
 
+            // Give the controller access of main app
+            rootLayoutController = loader.getController();
+            rootLayoutController.setMainApp(this);
+            
             // Show the scene containing the root layout.
             Scene scene = new Scene(rootLayout);
             primaryStage.setScene(scene);
@@ -98,8 +131,8 @@ public class MainApp extends Application {
             rootLayout.setCenter(personOverview);
             
             // Give the controller access to the main app.
-            PersonOverviewController controller = loader.getController();
-            controller.setMainApp(this);
+            personOverviewController = loader.getController();
+            personOverviewController.setMainApp(this);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -107,7 +140,25 @@ public class MainApp extends Application {
     }
     
     
-    
+    public void setUpNetworking(String ip, String port) {
+		try {
+			socket = new Socket(InetAddress.getByName(ip), Integer.parseInt(port));
+			System.out.println(socket.toString());
+			writer = new PrintWriter(socket.getOutputStream());
+			InputStreamReader isReader = new InputStreamReader(socket.getInputStream());
+			reader = new BufferedReader(isReader);
+			System.out.println("Networking established.");
+			
+			/* ??? */
+			personOverviewController.setStream(writer, reader);
+			personOverviewController.incomingTextArea.appendText("Networking established.\n");
+			personOverviewController.incomingTextArea.appendText("**********************************\n");
+			personOverviewController.createListenThread();
+		}
+		catch(Exception ex) {
+			ex.printStackTrace();
+		}
+	}
     	
     
     /**
@@ -134,17 +185,48 @@ public class MainApp extends Application {
             dialogStage.setScene(scene);
 
             // Set the person into the controller.
-            PersonEditDialogController controller = loader.getController();
-            controller.setDialogStage(dialogStage);
-            controller.setPerson(person);
+            personEditDialogController = loader.getController();
+            personEditDialogController.setDialogStage(dialogStage);
+            personEditDialogController.setPerson(person);
 
             // Show the dialog and wait until the user closes it
             dialogStage.showAndWait();
 
-            return controller.isOkClicked();
+            return personEditDialogController.isOkClicked();
         } catch (IOException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+    
+    
+    public void showIPPort() {
+    		try {
+    			System.out.println("DB_0");
+            // Load the fxml file and create a new stage for the popup dialog.
+            FXMLLoader loader = new FXMLLoader();
+            loader.setLocation(MainApp.class.getResource("view/ServerIPPort.fxml"));
+            AnchorPane page = (AnchorPane) loader.load();
+
+            // Create the dialog Stage.
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Set Server IP/Port");
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.initOwner(primaryStage);
+            Scene scene = new Scene(page);
+            dialogStage.setScene(scene);
+
+            // Set the person into the controller.
+            // Give the controller access to the main app.
+            serverIPPortController = loader.getController();
+            serverIPPortController.setDialogStage(dialogStage);
+            serverIPPortController.setMainApp(this);
+
+            // Show the dialog and wait until the user closes it
+            dialogStage.showAndWait();
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
    
@@ -157,6 +239,10 @@ public class MainApp extends Application {
         return primaryStage;
     }
 
+    
+    
+    
+    
 	public static void main(String[] args) {
 		launch(args);
 	}
